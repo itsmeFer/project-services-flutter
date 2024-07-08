@@ -1,9 +1,11 @@
+import 'package:app_car/models/car_page_model.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:app_car/custom_colors.dart';
+import 'package:flutter/widgets.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
-
-import 'bottom_nav_bar.dart'; // Import the bottom navigation bar
+import '../bottom_nav_bar.dart';
 
 void main() {
   runApp(MaterialApp(
@@ -25,54 +27,67 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<List<CarPageModel>> getCarPages() async {
+    try {
+      var response = await Dio().get("http://10.0.2.2:8000/api/car");
+      debugPrint('Response car page : ${response.data}');
+
+      if (response.statusCode != 200) throw Exception('Failed to fecth data');
+
+      List list = response.data;
+      List<CarPageModel> listCarPage =
+          list.map((element) => CarPageModel.fromJson(element)).toList();
+
+      return listCarPage;
+    } on DioException catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    getCarPages();
     return Scaffold(
       appBar: AppBar(
-          automaticallyImplyLeading: false,
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.white,
         elevation: 0,
         title: DropdownButton<String>(
-  value: 'Marelan Ps II', // Ganti dengan nilai default atau yang sesuai
-  items: <String>['Marelan Ps II'].map((String value) {
-    return DropdownMenuItem<String>(
-      value: value,
-      child: Text(value, style: TextStyle(color: Colors.black)),
-    );
-  }).toList(),
-  onChanged: (String? newValue) async {
-    if (newValue == 'Marelan Ps II') {
-      // Dapatkan lokasi pengguna
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      
-      // Ubah koordinat menjadi nama lokasi menggunakan geocoding
-      List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+          value: 'Marelan Ps II', // Ganti dengan nilai default atau yang sesuai
+          items: <String>['Marelan Ps II'].map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value, style: const TextStyle(color: Colors.black)),
+            );
+          }).toList(),
+          onChanged: (String? newValue) async {
+            if (newValue == 'Marelan Ps II') {
+              Position position = await Geolocator.getCurrentPosition(
+                desiredAccuracy: LocationAccuracy.high,
+              );
 
-      // Ambil nama lokasi dari placemark pertama
-      String locationName = placemarks[0].name ?? 'Unknown';
+              List<Placemark> placemarks = await placemarkFromCoordinates(
+                position.latitude,
+                position.longitude,
+              );
 
-      // Tampilkan nama lokasi atau lakukan sesuatu dengan nama lokasi ini
-      print('Lokasi pengguna: $locationName');
-    }
-  },
-),
+              String locationName = placemarks[0].name ?? 'Unknown';
 
+              print('Lokasi pengguna: ${locationName}');
+            }
+          },
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications_outlined, color: Colors.black),
+            icon: const Icon(Icons.notifications_outlined, color: Colors.black),
             onPressed: () {},
           ),
         ],
       ),
       body: ListView(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         children: [
-          Container(
+          SizedBox(
             height: 150,
             child: ListView(
               scrollDirection: Axis.horizontal,
@@ -90,8 +105,8 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          SizedBox(height: 25),
-          Row(
+          const SizedBox(height: 25),
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
@@ -104,11 +119,11 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           GridView.builder(
             shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
@@ -116,7 +131,7 @@ class _HomePageState extends State<HomePage> {
             ),
             itemCount: 4,
             itemBuilder: (context, index) {
-              return buildCarItem(context);
+              return buildData(context);
             },
           ),
         ],
@@ -131,7 +146,7 @@ class _HomePageState extends State<HomePage> {
   Widget buildAdContainer(String title, String subtitle, String imagePath) {
     return Container(
       width: 250,
-      margin: EdgeInsets.only(right: 10),
+      margin: const EdgeInsets.only(right: 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
@@ -139,7 +154,7 @@ class _HomePageState extends State<HomePage> {
             color: Colors.grey.withOpacity(0.5),
             spreadRadius: 2,
             blurRadius: 5,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -170,12 +185,15 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 Text(
                   subtitle,
-                  style: TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.white),
                 ),
               ],
             ),
@@ -185,9 +203,43 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget buildData(BuildContext context) {
+    return FutureBuilder(
+      future: getCarPages(),
+      builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              snapshot.error.toString(),
+            ),
+          );
+        } else if (snapshot.hasData) {
+          List<CarPageModel> list = snapshot.data;
+          debugPrint(list.toString());
+          return ListView.separated(
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text(list[index].name.toString()),
+                subtitle: Text(list[index].category.toString()),
+              );
+            },
+            separatorBuilder: (context, index) => const Divider(
+              thickness: 1,
+            ),
+            itemCount: list.length,
+          );
+        } else {
+          return const Center(
+            child: Text('Does not data'),
+          );
+        }
+      },
+    );
+  }
+
   Widget buildCarItem(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.shade300),
@@ -202,24 +254,24 @@ class _HomePageState extends State<HomePage> {
               height: 100,
             ),
           ),
-          SizedBox(height: 10),
-          Text('Toyota Fortuner'),
-          SizedBox(height: 5),
-          Text(
+          const SizedBox(height: 10),
+          const Text('Toyota Fortuner'),
+          const SizedBox(height: 5),
+          const Text(
             '2700cc',
             style: TextStyle(
               color: CustomColors.textGrey,
             ),
           ),
-          SizedBox(height: 5),
-          Text(
+          const SizedBox(height: 5),
+          const Text(
             '3.700k / hari',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 15,
             ),
           ),
-          SizedBox(height: 5),
+          const SizedBox(height: 5),
           Container(
             width: 36,
             height: 36,
@@ -228,7 +280,8 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(7),
             ),
             child: IconButton(
-              icon: Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+              icon: const Icon(Icons.arrow_forward_ios_rounded,
+                  color: Colors.white, size: 16),
               onPressed: () {},
             ),
           ),
